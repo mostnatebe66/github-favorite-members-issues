@@ -1,0 +1,62 @@
+{
+  "name": "cside-interview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"vite --port 3000 \" \"pnpm relay --watch\"",
+    "start": "vite --port 3000",
+    "build": "vite build && tsc",
+    "serve": "vite preview",
+    "test": "vitest run",
+    "format": "biome format",
+    "lint": "biome lint",
+    "check": "biome check",
+    "relay": "mkdirp ./src/utils/relay/__generated__ && relay-compiler"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-scroll-area": "^1.2.9",
+    "@tailwindcss/vite": "^4.0.6",
+    "@tanstack/react-router": "^1.114.3",
+    "@tanstack/react-router-devtools": "^1.114.3",
+    "@tanstack/router-plugin": "^1.114.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-relay": "^18.2.0",
+    "relay-runtime": "^18.2.0",
+    "tailwindcss": "^4.0.6",
+    "vite-plugin-relay": "^2.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.2.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/react-relay": "^18.2.0",
+    "@types/relay-runtime": "^18.2.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "jsdom": "^26.0.0",
+    "mkdirp": "^3.0.1",
+    "relay-compiler": "^19.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.5",
+    "web-vitals": "^4.2.4"
+  },
+  "relay": {
+    "src": "./src/",
+    "schema": "./github.graphql",
+    "language": "typescript",
+    "excludes": [
+      "**/node_modules/**",
+      "**/__mocks__/**",
+      "**/__generated__/**"
+    ],
+    "artifactDirectory": "./src/utils/relay/__generated__",
+    "noFutureProofEnums": true,
+    "eagerEsModules": true
+  },
+  "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
+}
