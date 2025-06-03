@@ -48,15 +48,18 @@ export default function IssuesList({
 		if (!pageInfo?.hasNextPage || loadingMore) return;
 		setLoadingMore(true);
 
-		// Refetch the next page
-		const moreData = await fetchNextPage(pageInfo.endCursor ?? null);
+		// Use the latest cursor for this fetch
+		const moreData = await fetchNextPage(after);
 		if (moreData) {
 			const moreIssues = moreData.repository?.issues.nodes ?? [];
 			setAllIssues((prev) => [...prev, ...moreIssues]);
+
+			// Use the pageInfo from the latest fetch, not the old state!
+			const newPageInfo = moreData.repository?.issues.pageInfo;
+			setAfter(newPageInfo?.endCursor ?? null); // <-- Important!
 		}
-		setAfter(pageInfo.endCursor ?? null);
 		setLoadingMore(false);
-	}, [pageInfo, loadingMore]);
+	}, [after, pageInfo?.hasNextPage, loadingMore]);
 
 	async function fetchNextPage(afterCursor: string | null) {
 		return await fetchGraphQL(owner, name, afterCursor);
@@ -91,15 +94,18 @@ export default function IssuesList({
 
 	//Adds infinite scroll functionality
 	useEffect(() => {
-		if (!loaderRef.current || !pageInfo?.hasNextPage) return;
+		if (!loaderRef.current) return;
+		if (!pageInfo?.hasNextPage) return;
+
 		const observer = new window.IntersectionObserver((entries) => {
 			if (entries[0].isIntersecting && !loadingMore) {
 				loadMore();
 			}
 		});
+
 		observer.observe(loaderRef.current);
 		return () => observer.disconnect();
-	}, [loadMore, pageInfo?.hasNextPage, loadingMore]);
+	}, [loadMore, loadingMore, pageInfo?.hasNextPage]);
 
 	return (
 		<div className="max-w-2xl mx-auto p-6">
