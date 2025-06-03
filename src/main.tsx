@@ -5,6 +5,7 @@ import ReactDOM from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 
 import reportWebVitals from "./reportWebVitals.ts";
+//@ts-ignore // This file exists
 import "./styles.css";
 import relayEnvironment from "./utils/relay/environment.ts";
 
@@ -36,7 +37,18 @@ if (rootElement && !rootElement.innerHTML) {
 	);
 }
 
+const sendToMakeBelieveMonitoringEndpoint = () => {
+	fetch("https://make-believe-monitoring-endpoint.com/report-web-vitals", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify("TBD"), // Replace with actual data
+		keepalive: true,
+	});
+};
+
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+reportWebVitals(sendToMakeBelieveMonitoringEndpoint);

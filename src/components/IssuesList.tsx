@@ -1,5 +1,6 @@
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { Link } from "@tanstack/react-router";
+import debounce from "lodash.debounce";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { Loader } from "./Loader";
@@ -25,7 +26,7 @@ export default function IssuesList({
 	owner,
 	name,
 	preloadedQuery,
-}: IssuesListProps) {
+}: Readonly<IssuesListProps>) {
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const [allIssues, setAllIssues] = useState<any[]>([]);
 	const [after, setAfter] = useState<string | null>(null);
@@ -43,20 +44,6 @@ export default function IssuesList({
 	const pageInfo = data.repository?.issues.pageInfo;
 
 	const loaderRef = useRef<HTMLDivElement>(null);
-
-	const loadMore = useCallback(async () => {
-		if (!pageInfo?.hasNextPage || loadingMore) return;
-		setLoadingMore(true);
-
-		// Refetch the next page
-		const moreData = await fetchNextPage(pageInfo.endCursor ?? null);
-		if (moreData) {
-			const moreIssues = moreData.repository?.issues.nodes ?? [];
-			setAllIssues((prev) => [...prev, ...moreIssues]);
-		}
-		setAfter(pageInfo.endCursor ?? null);
-		setLoadingMore(false);
-	}, [pageInfo, loadingMore]);
 
 	async function fetchNextPage(afterCursor: string | null) {
 		return await fetchGraphQL(owner, name, afterCursor);
@@ -89,17 +76,39 @@ export default function IssuesList({
 		return res.json().then((json) => json.data);
 	}
 
+	//rate limits scrolliong by 500ms
+	const debouncedLoadMore = useCallback(
+		debounce(
+			() => {
+				if (!pageInfo?.hasNextPage || loadingMore) return;
+				setLoadingMore(true);
+
+				fetchNextPage(pageInfo.endCursor ?? null).then((moreData) => {
+					if (moreData) {
+						const moreIssues = moreData.repository?.issues.nodes ?? [];
+						setAllIssues((prev) => [...prev, ...moreIssues]);
+					}
+					setAfter(pageInfo.endCursor ?? null);
+					setLoadingMore(false);
+				});
+			},
+			500,
+			{ leading: true, trailing: false },
+		),
+		[],
+	);
+
 	//Adds infinite scroll functionality
 	useEffect(() => {
 		if (!loaderRef.current || !pageInfo?.hasNextPage) return;
 		const observer = new window.IntersectionObserver((entries) => {
 			if (entries[0].isIntersecting && !loadingMore) {
-				loadMore();
+				debouncedLoadMore();
 			}
 		});
 		observer.observe(loaderRef.current);
 		return () => observer.disconnect();
-	}, [loadMore, pageInfo?.hasNextPage, loadingMore]);
+	}, [debouncedLoadMore, pageInfo?.hasNextPage, loadingMore]);
 
 	return (
 		<div className="max-w-2xl mx-auto p-6">

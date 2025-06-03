@@ -4,7 +4,7 @@ type User = {
 	url: string;
 };
 
-export default function Contributors({ users }: { users: User[] }) {
+export default function Contributors({ users }: Readonly<{ users: User[] }>) {
 	if (!users || users.length === 0) return null;
 	return (
 		<div className="my-4">
