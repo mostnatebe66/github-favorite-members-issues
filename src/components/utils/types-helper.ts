@@ -11,18 +11,16 @@ export type CommentNode = {
 	body: string;
 };
 
-export type IssueNode = {
-	title: string;
-	number: number;
-	createdAt: string;
-	body: string;
-	labels?:
-		| {
-				nodes?: Array<LabelNode | null> | null;
-		  }
-		| null
-		| undefined;
-};
+export interface IssueLabels {
+	nodes?: LabelNode[] | null;
+}
+
+export interface IssueNode {
+	number?: number;
+	title?: string;
+	createdAt?: string;
+	labels?: IssueLabels | null;
+}
 
 export type LabelNode = {
 	name: string;
@@ -30,7 +28,5 @@ export type LabelNode = {
 };
 
 export type IssuesListProps = {
-	owner: string;
-	name: string;
 	preloadedQuery: PreloadedQuery<IssuesListQuery>;
 };

@@ -1,111 +1,57 @@
+import type { IssuesListQuery } from "@/utils/relay/__generated__/IssuesListQuery.graphql";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { graphql, usePreloadedQuery } from "react-relay";
+import { useEffect, useRef } from "react";
+import {
+	type PreloadedQuery,
+	graphql,
+	usePaginationFragment,
+	usePreloadedQuery,
+} from "react-relay";
 import { Loader } from "./Loader";
-import type { IssuesListProps, LabelNode } from "./utils/types-helper";
+import type { IssueNode, LabelNode } from "./utils/types-helper";
 
 export const ISSUES_LIST_QUERY = graphql`
-  query IssuesListQuery($owner: String!, $name: String!, $after: String) {
-    repository(owner: $owner, name: $name) {
-      issues(first: 10, after: $after, orderBy: { field: CREATED_AT, direction: DESC }) {
-        nodes {
-          number
-          title
-          createdAt
-          labels(first: 5) { nodes { name color } }
-        }
-        pageInfo { endCursor hasNextPage }
-      }
-    }
+  query IssuesListQuery($owner: String!, $name: String!, $count: Int!, $after: String) {
+	repository(owner: $owner, name: $name) {
+	  ...IssuesList_repository
+	}
   }
 `;
 
 export default function IssuesList({
+	preloadedQuery,
 	owner,
 	name,
-	preloadedQuery,
-}: IssuesListProps) {
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	const [allIssues, setAllIssues] = useState<any[]>([]);
-	const [after, setAfter] = useState<string | null>(null);
-	const [loadingMore, setLoadingMore] = useState(false);
-
+}: Readonly<{
+	preloadedQuery: PreloadedQuery<IssuesListQuery>;
+	owner: string;
+	name: string;
+}>) {
 	const data = usePreloadedQuery(ISSUES_LIST_QUERY, preloadedQuery);
 
-	// Initialize issue list if it is the first page
-	useEffect(() => {
-		if (!after) {
-			setAllIssues([...(data.repository?.issues.nodes ?? [])]);
-		}
-	}, [data.repository?.issues.nodes, after]);
+	const {
+		data: repo,
+		loadNext,
+		hasNext,
+		isLoadingNext,
+	} = usePaginationFragment(issuesFragment, data.repository);
 
-	const pageInfo = data.repository?.issues.pageInfo;
+	//@ts-ignore
+	const allIssues = repo.issues.edges.map((edge) => edge.node);
 
 	const loaderRef = useRef<HTMLDivElement>(null);
 
-	const loadMore = useCallback(async () => {
-		if (!pageInfo?.hasNextPage || loadingMore) return;
-		setLoadingMore(true);
-
-		// Use the latest cursor for this fetch
-		const moreData = await fetchNextPage(after);
-		if (moreData) {
-			const moreIssues = moreData.repository?.issues.nodes ?? [];
-			setAllIssues((prev) => [...prev, ...moreIssues]);
-
-			// Use the pageInfo from the latest fetch, not the old state!
-			const newPageInfo = moreData.repository?.issues.pageInfo;
-			setAfter(newPageInfo?.endCursor ?? null); // <-- Important!
-		}
-		setLoadingMore(false);
-	}, [after, pageInfo?.hasNextPage, loadingMore]);
-
-	async function fetchNextPage(afterCursor: string | null) {
-		return await fetchGraphQL(owner, name, afterCursor);
-	}
-
-	async function fetchGraphQL(
-		owner: string,
-		name: string,
-		afterCursor: string | null,
-	) {
-		const query = `
-			query IssuesListQuery($owner: String!, $name: String!, $after: String) {
-				repository(owner: $owner, name: $name) {
-					issues(first: 10, after: $after, orderBy: { field: CREATED_AT, direction: DESC }) {
-						nodes { number title createdAt labels(first: 5) { nodes { name color } } }
-						pageInfo { endCursor hasNextPage }
-					}
-				}
-			}
-		`;
-		const variables = { owner, name, after: afterCursor };
-		const res = await fetch("https://api.github.com/graphql", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${import.meta.env.VITE_GH_TOKEN}`,
-			},
-			body: JSON.stringify({ query, variables }),
-		});
-		return res.json().then((json) => json.data);
-	}
-
-	//Adds infinite scroll functionality
 	useEffect(() => {
-		if (!loaderRef.current) return;
-		if (!pageInfo?.hasNextPage) return;
-
+		if (!loaderRef.current || !hasNext || isLoadingNext) return;
 		const observer = new window.IntersectionObserver((entries) => {
-			if (entries[0].isIntersecting && !loadingMore) {
-				loadMore();
+			if (entries[0].isIntersecting && hasNext && !isLoadingNext) {
+				loadNext(10);
 			}
 		});
-
 		observer.observe(loaderRef.current);
 		return () => observer.disconnect();
-	}, [loadMore, loadingMore, pageInfo?.hasNextPage]);
+	}, [hasNext, isLoadingNext, loadNext]);
 
 	return (
 		<div className="max-w-2xl mx-auto p-6">
@@ -115,7 +61,7 @@ export default function IssuesList({
 			>
 				<ScrollArea.Viewport className="h-full w-full">
 					<ul>
-						{allIssues.map((issue, idx) => (
+						{allIssues.map((issue: IssueNode, idx: number) => (
 							<li
 								key={issue?.number ?? idx}
 								className="mb-4 p-4 rounded shadow bg-white hover:bg-blue-50 transition-colors border border-gray-200"
@@ -161,10 +107,8 @@ export default function IssuesList({
 						))}
 					</ul>
 					<div ref={loaderRef} className="flex justify-center p-4">
-						{loadingMore && <Loader />}
-						{!pageInfo?.hasNextPage && (
-							<span className="text-gray-500">No more issues.</span>
-						)}
+						{isLoadingNext && <Loader />}
+						{!hasNext && <span className="text-gray-500">No more issues.</span>}
 					</div>
 				</ScrollArea.Viewport>
 				<ScrollArea.Scrollbar orientation="vertical" />
@@ -172,3 +116,32 @@ export default function IssuesList({
 		</div>
 	);
 }
+
+export const issuesFragment = graphql`
+  fragment IssuesList_repository on Repository
+  @refetchable(queryName: "IssuesListPaginationQuery") {
+    issues(
+      first: $count
+      after: $after
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) @connection(key: "IssuesList_repository_issues") {
+      edges {
+        node {
+          number
+          title
+          createdAt
+          labels(first: 5) {
+            nodes {
+              name
+              color
+            }
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
