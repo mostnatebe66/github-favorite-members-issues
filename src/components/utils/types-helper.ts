@@ -29,4 +29,6 @@ export type LabelNode = {
 
 export type IssuesListProps = {
 	preloadedQuery: PreloadedQuery<IssuesListQuery>;
+	owner: string;
+	name: string;
 };
