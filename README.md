@@ -1,3 +1,5 @@
+##Web App to search for github users and display repos and issues.
+
 - Search any repository on GitHub
 - Display the basic information about the repository
   - Name
