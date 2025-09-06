@@ -18,7 +18,7 @@
         - Comment's created at
         - Comment's body
 
-## Getting Started / Good-to-Know
+## Frameworks and Tooling
 
 - [Vite](https://vitejs.dev/)
 - [React](https://reactjs.org/)
