@@ -37,10 +37,12 @@ export default function IssuesList({
 	// Initialize issue list if it is the first page
 	useEffect(() => {
 		if (!after) {
-			setAllIssues([...(data.repository?.issues.nodes ?? [])]);
+			//@ts-ignore
+			setAllIssues([...(data.repository?.issues?.nodes ?? [])]);
 		}
+		//@ts-ignore
 	}, [data.repository?.issues.nodes, after]);
-
+	//@ts-ignore
 	const pageInfo = data.repository?.issues.pageInfo;
 
 	const loaderRef = useRef<HTMLDivElement>(null);
